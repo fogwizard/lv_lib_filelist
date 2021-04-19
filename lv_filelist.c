@@ -24,22 +24,22 @@
 /**********************
  *  STATIC PROTOTYPES
  **********************/
-static lv_res_t lv_filelist_rel_action(lv_obj_t * filelist);
+static void lv_filelist_rel_action(lv_obj_t * obj, lv_event_t event);
 
 /**********************
  *  STATIC VARIABLES
  **********************/
-static lv_signal_func_t ancestor_signal;
-static lv_design_func_t ancestor_design;
+static lv_signal_cb_t ancestor_signal;
+static lv_design_cb_t ancestor_design;
 
 /**********************
  *      MACROS
  **********************/
-
+#define FILE_BROWSER_PREFIX "/usr/bin"
 /**********************
  *   GLOBAL FUNCTIONS
  **********************/
-
+#define lv_mem_assert(n) (void *)(n)
 /**
  * Create a filelist object
  * @param par pointer to an object, it will be the parent of the new filelist
@@ -55,19 +55,23 @@ lv_obj_t * lv_filelist_create(lv_obj_t * par, const lv_obj_t * copy)
     lv_mem_assert(new_filelist);
     if(new_filelist == NULL) return NULL;
 
+    lv_obj_set_size(new_filelist, LV_HOR_RES_MAX, LV_VER_RES_MAX - 70);
+    lv_obj_align(new_filelist, NULL, LV_ALIGN_CENTER, 0, 70);
+
     /*Allocate the filelist type specific extended data*/
     lv_filelist_ext_t * ext = lv_obj_allocate_ext_attr(new_filelist, sizeof(lv_filelist_ext_t));
     lv_mem_assert(ext);
     if(ext == NULL) return NULL;
-    if(ancestor_signal == NULL) ancestor_signal = lv_obj_get_signal_func(new_filelist);
-    if(ancestor_design == NULL) ancestor_design = lv_obj_get_design_func(new_filelist);
+    if(ancestor_signal == NULL) ancestor_signal = lv_obj_get_signal_cb(new_filelist);
+    if(ancestor_design == NULL) ancestor_design = lv_obj_get_design_cb(new_filelist);
 
     /*Initialize the allocated 'ext' */
     memset(ext->current_path, 0, PATH_MAX); /*to be on the safe side*/
 
     /*Init the new filelist object*/
     if(copy == NULL) {
-    	strncpy(ext->current_path, LV_FILELIST_DEFAULT_PATH, PATH_MAX-1);
+        //strncpy(ext->current_path, LV_FILELIST_DEFAULT_PATH, PATH_MAX-1);
+        strncpy(ext->current_path, FILE_BROWSER_PREFIX, PATH_MAX-1);
     }
     /*Copy an existing filelist*/
     else {
@@ -75,7 +79,7 @@ lv_obj_t * lv_filelist_create(lv_obj_t * par, const lv_obj_t * copy)
 
         memcpy(ext->current_path, copy_ext->current_path, PATH_MAX);
         /*Refresh the style with new signal function*/
-        lv_obj_refresh_style(new_filelist);
+        //DEBUG lv_obj_refresh_style(new_filelist);
     }
 
     lv_filelist_update_list(new_filelist);
@@ -97,7 +101,7 @@ lv_obj_t * lv_filelist_create(lv_obj_t * par, const lv_obj_t * copy)
  */
 void lv_filelist_set_style(lv_obj_t * filelist, lv_list_style_t type, lv_style_t * style)
 {
-    lv_list_set_style(filelist, type, style);
+    //lv_list_set_style(filelist, type, style);
 }
 
 /*=====================
@@ -112,88 +116,136 @@ void lv_filelist_set_style(lv_obj_t * filelist, lv_list_style_t type, lv_style_t
  */
 lv_style_t * lv_filelist_get_style(const lv_obj_t * filelist, lv_list_style_t type)
 {
-    return lv_list_get_style(filelist, type);
+    //return lv_list_get_style(filelist, type);
+    return NULL;
 }
-
-/*=====================
- * Other functions
- *====================*/
 
 static int lv_filelist_filter(const struct dirent * entry)
 {
-	if(!strcmp(entry->d_name, "."))
-		return 0;
-	return 1;
+    size_t len;
+    if(!strcmp(entry->d_name, "."))
+        return 0;
+    if(!strcmp(entry->d_name, ".git"))
+        return 0;
+    if(entry->d_type == DT_DIR)
+        return 1;
+    len = strlen(entry->d_name);
+    if (len >= 4) {
+        if((entry->d_name[len - 4] == '.'
+                && entry->d_name[len - 3] == 'C'
+                && entry->d_name[len - 2] == 'S'
+                && entry->d_name[len - 1] == 'V')) {
+            return 1;
+        }
+        if((entry->d_name[len - 4] == '.'
+                && entry->d_name[len - 3] == 'p'
+                && entry->d_name[len - 2] == 'n'
+                && entry->d_name[len - 1] == 'g')) {
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
-lv_res_t lv_filelist_update_list(lv_obj_t *filelist) {
-	lv_filelist_ext_t * ext = lv_obj_get_ext_attr(filelist);
-	struct stat st;
-	struct dirent **entries;
-	char *tmp_buf;
-	const char *symbol;
-	int n = 0;
+lv_res_t lv_filelist_update_list(lv_obj_t *filelist)
+{
+    lv_filelist_ext_t * ext = lv_obj_get_ext_attr(filelist);
+    struct stat st;
+    struct dirent **entries;
+    char *tmp_buf;
+    const char *symbol;
+    lv_obj_t * list_btn;
+    int n = 0;
 
-	/*Remove existing items from the list*/
-	lv_list_clean(filelist);
+    /*Remove existing items from the list*/
+    lv_list_clean(filelist);
 
-	tmp_buf = lv_mem_alloc(PATH_MAX + 1);
-	lv_mem_assert(tmp_buf);
-	getcwd(tmp_buf, PATH_MAX);
+    tmp_buf = lv_mem_alloc(PATH_MAX + 1);
+    lv_mem_assert(tmp_buf);
+    getcwd(tmp_buf, PATH_MAX);
 
-	n = scandir(ext->current_path, &entries, lv_filelist_filter, alphasort);
-	/* Keep reading entries from the directory */
-	for(int i = 0; i < n; i++) {
-		struct dirent * entry = entries[i];
-		chdir(ext->current_path);
-		stat(entry->d_name, &st);
-		if(S_ISDIR(st.st_mode))
-			symbol = SYMBOL_DIRECTORY;
-		else
-			symbol = SYMBOL_FILE;
-		if(!strcmp(entry->d_name, "..")) {
-			if(!strcmp(ext->current_path, "/")) {
-				free(entry);
-				continue;
-			}
-			strcpy(entry->d_name, "Up");
-			symbol = SYMBOL_UP;
-		}
-		lv_list_add(filelist, symbol, entry->d_name, lv_filelist_rel_action);
-		free(entry);
-	}
-	free(entries);
-	chdir(tmp_buf);
-	lv_mem_free(tmp_buf);
-	return LV_RES_OK;
+    n = scandir(ext->current_path, &entries, lv_filelist_filter, alphasort);
+    /* Keep reading entries from the directory */
+    for(int i = 0; i < n; i++) {
+        struct dirent * entry = entries[i];
+        chdir(ext->current_path);
+        stat(entry->d_name, &st);
+        if(S_ISDIR(st.st_mode))
+            symbol = LV_SYMBOL_DIRECTORY;
+        else
+            symbol = LV_SYMBOL_FILE;
+        if(!strcmp(entry->d_name, "..")) {
+            if(!strcmp(ext->current_path, "/")) {
+                free(entry);
+                continue;
+            }
+            strcpy(entry->d_name, "UpFolder");
+            symbol = LV_SYMBOL_UP;
+        }
+        list_btn = lv_list_add_btn(filelist, symbol, entry->d_name);
+        lv_obj_set_event_cb(list_btn, lv_filelist_rel_action);
+        free(entry);
+    }
+    free(entries);
+    chdir(tmp_buf);
+    lv_mem_free(tmp_buf);
+    return LV_RES_OK;
 }
 
+#include <libgen.h>
+const char *get_next_full_path(const char *name)
+{
+    static int init = 0;
+    static char path[PATH_MAX];
+    const char *base_name = NULL;
+    const char *dir_name = NULL;
+
+    if(0 == init) {
+        init = 1;
+        snprintf(path,PATH_MAX,"%s",FILE_BROWSER_PREFIX);
+    }
+
+    if(NULL == name) {
+        return path;
+    }
+
+    if(0 == strcmp(name, "..")) {
+        dir_name  = dirname(path);
+        strncpy(path, dir_name, PATH_MAX);
+        return path;
+    }
+
+    snprintf(path, PATH_MAX,"%s/%s", path, name);
+    return path;
+}
 
 /**********************
  *   STATIC FUNCTIONS
  **********************/
+static void lv_filelist_rel_action(lv_obj_t * listItem, lv_event_t event)
+{
+    if(event == LV_EVENT_CLICKED) {
+        printf("Clicked: %s\n", lv_list_get_btn_text(listItem));
+        lv_obj_t * fileList = lv_obj_get_parent(lv_obj_get_parent(listItem));
+        const char * name = lv_list_get_btn_text(listItem);
+        const char * symbol = (const char *) lv_img_get_src(lv_list_get_btn_img(listItem));
+        lv_filelist_ext_t * ext = lv_obj_get_ext_attr(fileList);
 
-static lv_res_t lv_filelist_rel_action(lv_obj_t * listItem) {
-	lv_obj_t * fileList = lv_obj_get_parent(lv_obj_get_parent(listItem));
-	char * tmp_buf = lv_mem_alloc(PATH_MAX + 1);
-	const char * name = lv_list_get_btn_text(listItem);
-	const char * symbol = (const char *) lv_img_get_src(lv_list_get_btn_img(listItem));
-	lv_filelist_ext_t * ext = lv_obj_get_ext_attr(fileList);
+        if(!strcmp(symbol, LV_SYMBOL_UP) && !strcmp(name, "UpFolder"))
+            name = "..";
 
-
-	lv_mem_assert(tmp_buf);
-
-	if(!strcmp(symbol, SYMBOL_UP) && !strcmp(name, "Up"))
-		name = "..";
-
-	getcwd(tmp_buf, PATH_MAX);
-	chdir(ext->current_path);
-	chdir(name);
-	getcwd(ext->current_path, PATH_MAX);
-	chdir(tmp_buf);
-	lv_mem_free(tmp_buf);
-	lv_filelist_update_list(fileList);
-	return LV_RES_OK;
+        if(0 == strcmp(symbol, LV_SYMBOL_DIRECTORY)
+                ||(0 == strcmp(symbol, LV_SYMBOL_UP))) {
+            strncpy(ext->current_path, get_next_full_path(name), PATH_MAX);
+            lv_filelist_update_list(fileList);
+        } else if(!strcmp(symbol, LV_SYMBOL_FILE)) {
+            printf("wufeng: name=%s path=%s\n",\
+                   name, get_next_full_path(NULL));
+        } else {
+            printf("wufeng: not a dir or file\n");
+        }
+    }
 }
 
 #endif
