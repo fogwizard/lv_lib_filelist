@@ -55,8 +55,8 @@ lv_obj_t * lv_filelist_create(lv_obj_t * par, const lv_obj_t * copy)
     lv_mem_assert(new_filelist);
     if(new_filelist == NULL) return NULL;
 
-    lv_obj_set_size(new_filelist, LV_HOR_RES_MAX, LV_VER_RES_MAX - 70);
-    lv_obj_align(new_filelist, NULL, LV_ALIGN_CENTER, 0, 70);
+    lv_obj_set_size(new_filelist, LV_HOR_RES_MAX, LV_VER_RES_MAX - 64);
+    lv_obj_align(new_filelist, NULL, LV_ALIGN_CENTER, 0, 64);
 
     /*Allocate the filelist type specific extended data*/
     lv_filelist_ext_t * ext = lv_obj_allocate_ext_attr(new_filelist, sizeof(lv_filelist_ext_t));
@@ -204,6 +204,7 @@ const char *get_next_full_path(const char *name)
     if(0 == init) {
         init = 1;
         snprintf(path,PATH_MAX,"%s",FILE_BROWSER_PREFIX);
+        printf("%s:%d %s\n", __func__, __LINE__, path);
     }
 
     if(NULL == name) {
@@ -215,8 +216,10 @@ const char *get_next_full_path(const char *name)
         strncpy(path, dir_name, PATH_MAX);
         return path;
     }
+    strcat(path, "/");
+    strcat(path, name);
 
-    snprintf(path, PATH_MAX,"%s/%s", path, name);
+    printf("%s:%d %s\n", __func__, __LINE__, path);
     return path;
 }
 
