@@ -54,7 +54,7 @@ extern "C" {
      *      TYPEDEFS
      **********************/
     /*Data of filelist*/
-    typedef lv_obj_t * (*lv_filelist_pf)(lv_obj_t *parent, void *user_data);
+    typedef lv_obj_t * (*lv_filelist_pf)(lv_obj_t *parent, void *user_data, const char *name);
 
     typedef struct {
         lv_list_ext_t list; /*Ext. of ancestor*/

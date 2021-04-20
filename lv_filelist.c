@@ -243,7 +243,7 @@ static void lv_filelist_rel_action(lv_obj_t * listItem, lv_event_t event)
         } else if(!strcmp(symbol, LV_SYMBOL_FILE)) {
             printf("wufeng: name=%s path=%s\n",\
                    name, get_next_full_path(NULL, 0));
-            ext->file_view_pf(lv_obj_get_parent(listItem), get_next_full_path(NULL, 0));
+            ext->file_view_pf(lv_obj_get_parent(listItem), get_next_full_path(NULL, 0), name);
         } else {
             printf("wufeng: not a dir or file\n");
         }
