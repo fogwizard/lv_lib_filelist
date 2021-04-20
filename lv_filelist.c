@@ -8,6 +8,7 @@
  *      INCLUDES
  *********************/
 #include <string.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include "lv_filelist.h"
@@ -36,6 +37,7 @@ static lv_design_cb_t ancestor_design;
  *      MACROS
  **********************/
 #define FILE_BROWSER_PREFIX "/usr/bin"
+const char *get_next_full_path(const char *name, int load);
 /**********************
  *   GLOBAL FUNCTIONS
  **********************/
@@ -71,7 +73,7 @@ lv_obj_t * lv_filelist_create(lv_obj_t * par, const lv_obj_t * copy)
     /*Init the new filelist object*/
     if(copy == NULL) {
         //strncpy(ext->current_path, LV_FILELIST_DEFAULT_PATH, PATH_MAX-1);
-        strncpy(ext->current_path, FILE_BROWSER_PREFIX, PATH_MAX-1);
+        strncpy(ext->current_path, get_next_full_path(NULL, 1), PATH_MAX-1);
     }
     /*Copy an existing filelist*/
     else {
@@ -194,17 +196,14 @@ lv_res_t lv_filelist_update_list(lv_obj_t *filelist)
 }
 
 #include <libgen.h>
-const char *get_next_full_path(const char *name)
+const char *get_next_full_path(const char *name, int load)
 {
-    static int init = 0;
     static char path[PATH_MAX];
     const char *base_name = NULL;
     const char *dir_name = NULL;
 
-    if(0 == init) {
-        init = 1;
+    if(load) {
         snprintf(path,PATH_MAX,"%s",FILE_BROWSER_PREFIX);
-        printf("%s:%d %s\n", __func__, __LINE__, path);
     }
 
     if(NULL == name) {
@@ -219,7 +218,6 @@ const char *get_next_full_path(const char *name)
     strcat(path, "/");
     strcat(path, name);
 
-    printf("%s:%d %s\n", __func__, __LINE__, path);
     return path;
 }
 
@@ -240,11 +238,11 @@ static void lv_filelist_rel_action(lv_obj_t * listItem, lv_event_t event)
 
         if(0 == strcmp(symbol, LV_SYMBOL_DIRECTORY)
                 ||(0 == strcmp(symbol, LV_SYMBOL_UP))) {
-            strncpy(ext->current_path, get_next_full_path(name), PATH_MAX);
+            strncpy(ext->current_path, get_next_full_path(name, 0), PATH_MAX);
             lv_filelist_update_list(fileList);
         } else if(!strcmp(symbol, LV_SYMBOL_FILE)) {
             printf("wufeng: name=%s path=%s\n",\
-                   name, get_next_full_path(NULL));
+                   name, get_next_full_path(NULL, 0));
         } else {
             printf("wufeng: not a dir or file\n");
         }
