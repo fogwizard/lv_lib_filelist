@@ -48,7 +48,7 @@ const char *get_next_full_path(const char *name, int load);
  * @param copy pointer to a filelist object, if not NULL then the new object will be copied from it
  * @return pointer to the created filelist
  */
-lv_obj_t * lv_filelist_create(lv_obj_t * par, const lv_obj_t * copy)
+lv_obj_t * lv_filelist_create(lv_obj_t * par, const lv_obj_t * copy, lv_filelist_pf pf)
 {
     LV_LOG_TRACE("filelist create started");
 
@@ -57,8 +57,8 @@ lv_obj_t * lv_filelist_create(lv_obj_t * par, const lv_obj_t * copy)
     lv_mem_assert(new_filelist);
     if(new_filelist == NULL) return NULL;
 
-    lv_obj_set_size(new_filelist, LV_HOR_RES_MAX, LV_VER_RES_MAX - 64);
-    lv_obj_align(new_filelist, NULL, LV_ALIGN_CENTER, 0, 64);
+    lv_obj_set_size(new_filelist, LV_HOR_RES_MAX, LV_VER_RES_MAX - 60);
+    lv_obj_align(new_filelist, par, LV_ALIGN_CENTER, 0, 60);
 
     /*Allocate the filelist type specific extended data*/
     lv_filelist_ext_t * ext = lv_obj_allocate_ext_attr(new_filelist, sizeof(lv_filelist_ext_t));
@@ -69,7 +69,7 @@ lv_obj_t * lv_filelist_create(lv_obj_t * par, const lv_obj_t * copy)
 
     /*Initialize the allocated 'ext' */
     memset(ext->current_path, 0, PATH_MAX); /*to be on the safe side*/
-
+    ext->file_view_pf = pf;
     /*Init the new filelist object*/
     if(copy == NULL) {
         //strncpy(ext->current_path, LV_FILELIST_DEFAULT_PATH, PATH_MAX-1);
@@ -243,6 +243,7 @@ static void lv_filelist_rel_action(lv_obj_t * listItem, lv_event_t event)
         } else if(!strcmp(symbol, LV_SYMBOL_FILE)) {
             printf("wufeng: name=%s path=%s\n",\
                    name, get_next_full_path(NULL, 0));
+            ext->file_view_pf(lv_obj_get_parent(listItem), get_next_full_path(NULL, 0));
         } else {
             printf("wufeng: not a dir or file\n");
         }

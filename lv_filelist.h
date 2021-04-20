@@ -54,10 +54,13 @@ extern "C" {
      *      TYPEDEFS
      **********************/
     /*Data of filelist*/
+    typedef lv_obj_t * (*lv_filelist_pf)(lv_obj_t *parent, void *user_data);
+
     typedef struct {
         lv_list_ext_t list; /*Ext. of ancestor*/
         /*New data for this type */
         char current_path[PATH_MAX + 1];
+        lv_filelist_pf file_view_pf;
     } lv_filelist_ext_t;
 
 
@@ -71,7 +74,7 @@ extern "C" {
      * @param copy pointer to a filelist object, if not NULL then the new object will be copied from it
      * @return pointer to the created filelist
      */
-    lv_obj_t * lv_filelist_create(lv_obj_t * par, const lv_obj_t * copy);
+    lv_obj_t * lv_filelist_create(lv_obj_t * par, const lv_obj_t * copy, lv_filelist_pf pf);
 
     /*======================
      * Add/remove functions
