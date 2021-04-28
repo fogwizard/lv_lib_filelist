@@ -36,7 +36,7 @@ static lv_design_cb_t ancestor_design;
 /**********************
  *      MACROS
  **********************/
-#define FILE_BROWSER_PREFIX "/usr/bin"
+#define get_browser_prefix()  "/usr/bin/dat"
 const char *get_next_full_path(const char *name, int load);
 /**********************
  *   GLOBAL FUNCTIONS
@@ -50,6 +50,8 @@ const char *get_next_full_path(const char *name, int load);
  */
 lv_obj_t * lv_filelist_create(lv_obj_t * par, const lv_obj_t * copy, lv_filelist_pf pf)
 {
+    static lv_style_t style_bg;
+
     LV_LOG_TRACE("filelist create started");
 
     /*Create the ancestor of filelist*/
@@ -58,6 +60,12 @@ lv_obj_t * lv_filelist_create(lv_obj_t * par, const lv_obj_t * copy, lv_filelist
     if(new_filelist == NULL) return NULL;
 
     lv_obj_set_size(new_filelist, LV_HOR_RES_MAX, LV_VER_RES_MAX - 60);
+
+    lv_style_set_bg_opa(&style_bg, LV_STATE_DEFAULT, LV_OPA_100);
+    lv_style_set_border_width(&style_bg, LV_STATE_DEFAULT, 0);
+    lv_style_set_border_opa(&style_bg, LV_STATE_DEFAULT, LV_OPA_0);
+    lv_obj_add_style(new_filelist, LV_BTN_PART_MAIN, &style_bg);
+
     lv_obj_align(new_filelist, par, LV_ALIGN_CENTER, 0, 60);
 
     /*Allocate the filelist type specific extended data*/
@@ -139,12 +147,12 @@ static int lv_filelist_filter(const struct dirent * entry)
                 && entry->d_name[len - 1] == 'V')) {
             return 1;
         }
-        if((entry->d_name[len - 4] == '.'
+        /*if((entry->d_name[len - 4] == '.'
                 && entry->d_name[len - 3] == 'p'
                 && entry->d_name[len - 2] == 'n'
                 && entry->d_name[len - 1] == 'g')) {
             return 1;
-        }
+        }*/
     }
 
     return 0;
@@ -182,6 +190,10 @@ lv_res_t lv_filelist_update_list(lv_obj_t *filelist)
                 free(entry);
                 continue;
             }
+            if(!strcmp(ext->current_path, get_browser_prefix())) {
+                free(entry);
+                continue;
+            }
             strcpy(entry->d_name, "UpFolder");
             symbol = LV_SYMBOL_UP;
         }
@@ -203,7 +215,7 @@ const char *get_next_full_path(const char *name, int load)
     const char *dir_name = NULL;
 
     if(load) {
-        snprintf(path,PATH_MAX,"%s",FILE_BROWSER_PREFIX);
+        snprintf(path,PATH_MAX,"%s",get_browser_prefix());
     }
 
     if(NULL == name) {
