@@ -167,6 +167,7 @@ lv_res_t lv_filelist_update_list(lv_obj_t *filelist)
     const char *symbol;
     lv_obj_t * list_btn;
     int n = 0;
+    const char * type;
 
     /*Remove existing items from the list*/
     lv_list_clean(filelist);
@@ -181,10 +182,13 @@ lv_res_t lv_filelist_update_list(lv_obj_t *filelist)
         struct dirent * entry = entries[i];
         chdir(ext->current_path);
         stat(entry->d_name, &st);
-        if(S_ISDIR(st.st_mode))
+        if(S_ISDIR(st.st_mode)) {
             symbol = LV_SYMBOL_DIRECTORY;
-        else
+	    type = "folder";
+        } else {
             symbol = LV_SYMBOL_FILE;
+	    type = "CSV";
+	}
         if(!strcmp(entry->d_name, "..")) {
             if(!strcmp(ext->current_path, "/")) {
                 free(entry);
@@ -197,7 +201,23 @@ lv_res_t lv_filelist_update_list(lv_obj_t *filelist)
             strcpy(entry->d_name, "UpFolder");
             symbol = LV_SYMBOL_UP;
         }
-        list_btn = lv_list_add_btn(filelist, symbol, entry->d_name);
+
+        if("CSV" == type) {
+            const char * unit_name = "K";
+            char info_buf[64];
+            int file_size = st.st_size/1024;
+
+            if(0 == file_size) {
+                file_size = st.st_size;
+                unit_name = "B";
+            }
+	    snprintf(info_buf,sizeof(info_buf),\
+		"%s    type:%s    size:%4d%s",\
+	    	entry->d_name, type, file_size, unit_name);
+            list_btn = lv_list_add_btn(filelist, symbol, info_buf);
+        } else {
+            list_btn = lv_list_add_btn(filelist, symbol, entry->d_name);
+        }
         lv_obj_set_event_cb(list_btn, lv_filelist_rel_action);
         free(entry);
     }
@@ -233,17 +253,29 @@ const char *get_next_full_path(const char *name, int load)
     return path;
 }
 
+int strncpy_space(char *text, int len, const char *name)
+{
+    for(int i = 0; i < len;i++) {
+        if((0 == name[i]) ||(' ' == name[i])) {
+            break;
+        }
+        text[i] = name[i];
+    }
+    return len;
+}
+
 /**********************
  *   STATIC FUNCTIONS
  **********************/
 static void lv_filelist_rel_action(lv_obj_t * listItem, lv_event_t event)
 {
     if(event == LV_EVENT_CLICKED) {
-        printf("Clicked: %s\n", lv_list_get_btn_text(listItem));
         lv_obj_t * fileList = lv_obj_get_parent(lv_obj_get_parent(listItem));
         const char * name = lv_list_get_btn_text(listItem);
         const char * symbol = (const char *) lv_img_get_src(lv_list_get_btn_img(listItem));
         lv_filelist_ext_t * ext = lv_obj_get_ext_attr(fileList);
+
+        printf("Clicked: %s\n", name);
 
         if(!strcmp(symbol, LV_SYMBOL_UP) && !strcmp(name, "UpFolder"))
             name = "..";
@@ -253,8 +285,9 @@ static void lv_filelist_rel_action(lv_obj_t * listItem, lv_event_t event)
             strncpy(ext->current_path, get_next_full_path(name, 0), PATH_MAX);
             lv_filelist_update_list(fileList);
         } else if(!strcmp(symbol, LV_SYMBOL_FILE)) {
-            printf("wufeng: name=%s path=%s\n",\
-                   name, get_next_full_path(NULL, 0));
+            char text[64];
+            strncpy_space(text, sizeof(text), name);
+            name = text;
             ext->file_view_pf(lv_obj_get_parent(listItem), get_next_full_path(NULL, 0), name);
         } else {
             printf("wufeng: not a dir or file\n");
