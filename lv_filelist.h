@@ -74,8 +74,7 @@ extern "C" {
      * @param copy pointer to a filelist object, if not NULL then the new object will be copied from it
      * @return pointer to the created filelist
      */
-    lv_obj_t * lv_filelist_create(lv_obj_t * par, const lv_obj_t * copy, lv_filelist_pf pf);
-
+    lv_obj_t * lv_filelist_create(lv_obj_t * par, const lv_obj_t * copy, lv_filelist_pf pf, const char *path);
     /*======================
      * Add/remove functions
      *=====================*/
